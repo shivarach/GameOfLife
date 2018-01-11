@@ -1,73 +1,72 @@
 package org.game.domain;
 
+import java.util.List;
+import java.util.Optional;
+
 public class OrthogonalGrid {
-    private int[][] grid;
 
-    public OrthogonalGrid(int[][] seed) {
-        createAndInitiateGrid(seed);
-    }
+    private Cell[][] cells;
+    private int currentGridSize;
 
-    private void createAndInitiateGrid(int[][] seed) {
-        if (seed == null) {
-            grid = new int[0][0];
-            return;
-        }
-        int gridLength = findMaxCoordianteInSeed(seed);
-        grid = new int[gridLength + 3][gridLength + 3];
-        for (int row = 0; row < seed.length; row++) {
-            int currentRow = seed[row][0] + 1;
-            int currentColumn = seed[row][1] + 1;
-            grid[currentRow][currentColumn] = 1;
-        }
+    public OrthogonalGrid(List<Cell> seed, int maxCoordinate) {
+        cells = new Cell[maxCoordinate + 1][maxCoordinate + 1];
+        currentGridSize = maxCoordinate + 1;
 
-    }
-
-    private int findMaxCoordianteInSeed(int[][] seed) {
-        int max = 1;
-        for (int row = 0; row < seed.length; row++) {
-            max = seed[row][0] < max ? max : seed[row][0];
-            max = seed[row][1] < max ? max : seed[row][1];
-        }
-        return max;
-    }
-
-    public void nextState() {
-        int[][] newGrid = clone(grid);
-        int i = 1;
-        for (int row = 1; row < newGrid.length - 1; row++) {
-            for (int column = 1; column < newGrid[0].length - 1; column++) {
-                int liveNeighbours = findNeighbourLiveCells(row, column);
-                if (newGrid[row][column] == 1 && liveNeighbours < 2) {
-                    newGrid[row][column] = 0;
-                } else if (newGrid[row][column] == 1 && liveNeighbours > 3) {
-                    newGrid[row][column] = 0;
-                } else if (newGrid[row][column] == 0 && liveNeighbours == 3) {
-                    newGrid[row][column] = 1;
-                }
-
+        for (int xCoordinate = 0; xCoordinate <= maxCoordinate; xCoordinate++) {
+            for (int yCoordinate = 0; yCoordinate <= maxCoordinate; yCoordinate++) {
+                Point point = new Point(xCoordinate, yCoordinate);
+                Optional<Cell> pointFromSeed = getPointFromSeed(point, seed);
+                cells[xCoordinate][yCoordinate] = pointFromSeed.isPresent() ?
+                        pointFromSeed.get() : new Cell(CellStatus.DEAD, point);
             }
         }
-        grid = newGrid;
     }
 
-    private int[][] clone(int[][] grid) {
-        int[][] tempGrid = new int[grid.length][grid[0].length];
-        for (int row = 0; row < grid.length; row++) {
-            for (int column = 0; column < grid[0].length; column++) {
-                tempGrid[row][column] = grid[row][column];
-            }
-        }
-        return tempGrid;
+    public OrthogonalGrid(Cell[][] cells, int maxCoordinate) {
+        this.cells = cells;
+        this.currentGridSize = maxCoordinate;
     }
 
-    private int findNeighbourLiveCells(int row, int column) {
+    public int getNumberOfLiveNeighbourCells(int xCoordinate, int yCoordinate) {
         int liveNeighbours = 0;
+        int row = -1, column = -1;
         for (int neighbourRow = -1; neighbourRow <= 1; neighbourRow++) {
             for (int neighbourColumn = -1; neighbourColumn <= 1; neighbourColumn++) {
-                liveNeighbours += grid[row + neighbourRow][column + neighbourColumn];
+                row = xCoordinate + neighbourRow;
+                column = yCoordinate + neighbourColumn;
+                if(isIndexOutOfGrid(row, column))
+                    continue;
+                if(isCellAlive(row, column))
+                    liveNeighbours++;
             }
         }
-        return grid[row][column] == 1 ? --liveNeighbours : liveNeighbours;
+        return isCellAlive(xCoordinate, yCoordinate) ? --liveNeighbours : liveNeighbours;
+    }
+
+    public Cell getCell(int xCoordinate, int yCoordinate) {
+        return cells[xCoordinate][yCoordinate];
+    }
+
+    public int getCurrentGridSize() {
+        return currentGridSize;
+    }
+
+    private Optional<Cell> getPointFromSeed(Point point, List<Cell> seed) {
+        return seed.stream().filter(cell -> cell.equals(new Cell(CellStatus.ALIVE, point))).findFirst();
+
+    }
+
+    private boolean isCellAlive(int row, int column) {
+        if(isIndexOutOfGrid(row, column)) {
+            throw new IndexOutOfBoundsException();
+        }
+        return cells[row][column].getStatus().equals(CellStatus.ALIVE);
+    }
+
+    private boolean isIndexOutOfGrid(int row, int column) {
+        if(row < 0 || column < 0 || row >= currentGridSize || column >= currentGridSize)
+            return true;
+        return false;
     }
 
     @Override
@@ -76,16 +75,27 @@ public class OrthogonalGrid {
             return true;
         else if (obj == null || !(obj instanceof OrthogonalGrid))
             return false;
-        OrthogonalGrid orthogonalGrid = (OrthogonalGrid) obj;
-        if (this.grid.length != orthogonalGrid.grid.length)
+        OrthogonalGrid grid = (OrthogonalGrid) obj;
+        if (this.cells == grid.cells)
+            return true;
+        if(this.cells.length != grid.cells.length)
             return false;
-        for (int row = 0; row < grid.length; row++) {
-            for (int column = 0; column < grid[0].length; column++) {
-                if (this.grid[row][column] != orthogonalGrid.grid[row][column]) {
+        for (int xCoordinate = 0; xCoordinate < this.currentGridSize; xCoordinate++) {
+            for(int yCoordinate = 0; yCoordinate < this.currentGridSize; yCoordinate++) {
+                if (!this.cells[xCoordinate][yCoordinate].equals(grid.cells[xCoordinate][yCoordinate]))
                     return false;
-                }
             }
         }
         return true;
+    }
+
+    public void print() {
+       for(int i = 0; i < this.currentGridSize; i++) {
+            for(int j = 0; j < this.currentGridSize; j++) {
+                System.out.print(cells[i][j].getStatus() + " ");
+            }
+            System.out.println();
+        }
+
     }
 }
