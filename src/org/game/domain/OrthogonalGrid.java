@@ -89,13 +89,4 @@ public class OrthogonalGrid {
         return true;
     }
 
-    public void print() {
-       for(int i = 0; i < this.currentGridSize; i++) {
-            for(int j = 0; j < this.currentGridSize; j++) {
-                System.out.print(cells[i][j].getStatus() + " ");
-            }
-            System.out.println();
-        }
-
-    }
 }
